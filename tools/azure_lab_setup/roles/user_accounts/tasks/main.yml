@@ -1,0 +1,34 @@
+#- name: Dump facts
+#  debug:
+#    var: hostvars[inventory_hostname]
+#  tags: 
+#    - user_accounts
+#    - users
+
+### Delegated facts appear to be broken in Ansible 2.2.1/2.2.2 - Creating username from hostname
+- name: Set local username to create on instances
+  set_fact:
+    username: "{{ ansible_hostname | regex_replace('.*-(\\w*)-\\w*$','\\1') }}"
+  tags:
+    - user_accounts
+    - users
+
+- name: Create User Group
+  group:
+    name: "{{ username }}"
+    state: present
+  tags:
+    - user_accounts
+    - users
+
+- name: Create User Account
+  user:
+    createhome: yes
+    group: "{{ username }}"
+    name: "{{ username }}"
+    shell: /bin/bash
+    state: present
+    password: "{{ admin_password_hash }}"
+  tags:
+    - user_accounts
+    - users

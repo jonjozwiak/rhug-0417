@@ -1,0 +1,80 @@
+- name: Wait for instances to finish initializing
+  pause:
+    seconds: 90
+  when: instances | changed
+  tags:
+    - always
+    - provision
+
+#- debug: msg="Instances = {{ instances.results }}"
+#- debug: msg="Public IPs = {{ publicips.results }}"
+
+- name: Add hosts to control_nodes group
+  add_host:
+    name: "{{ item.0.invocation.module_args.tags.Name }}"
+    #ansible_host: "{{ item.tagged_instances[0].public_ip }}"
+    ansible_host: "{{ item.1.state.ip_address }}"
+    ansible_user: "{{ azure_login_names[item.0.item.item.1.type] }}"
+    ansible_port: "{{ ssh_port }}"
+    groups: lab_hosts,control_nodes
+  with_nested:
+    - "{{ instances.results }}"
+    - "{{ publicips.results }}"
+  when: "'control' in item.0.invocation.module_args.tags.Name and item.0.invocation.module_args.tags.Name in item.1.state.name"
+  changed_when: no
+  tags:
+    - always
+    - provision
+
+- name: Add hosts to groups
+  add_host:
+    name: "{{ item.0.invocation.module_args.tags.Name }}"
+    #ansible_host: "{{ item.tagged_instances[0].public_ip }}"
+    #ansible_host: "{{ item[0].public_ip }}"
+    ansible_host: "{{ item.1.state.ip_address }}"
+    ansible_user: "{{ azure_login_names[item.0.item.item.1.type] }}"
+    ansible_port: "{{ ssh_port }}"
+    groups: lab_hosts,managed_nodes
+  with_nested:
+    - "{{ instances.results }}"
+    - "{{ publicips.results }}"
+  when: "'control' not in item.0.invocation.module_args.tags.Name and item.0.invocation.module_args.tags.Name in item.1.state.name"
+  changed_when: no
+  tags:
+    - always
+    - provision
+
+### NOTE - Delegated facts appear to be broken in Ansible 2.2.1/2.2.2
+- name: Set local username to create on instances
+  set_fact:
+    username: "{{ item | regex_replace('.*-(\\w*)-\\w*$','\\1') }}"
+  with_items: "{{ groups.lab_hosts }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  #delegate_facts: yes
+  tags:
+    - always
+    - provision
+
+#- name: print delegated fact
+#  debug: var=hostvars[item].username
+#  with_items: "{{ groups.lab_hosts }}"
+
+- name: Generate student inventories
+  template:
+    src: instances.txt.j2
+    dest: ./{{ item.username }}-instances.txt
+  with_items: "{{ users }}"
+  tags:
+    - inventory
+    - users
+    - user_accounts
+
+- name: Generate instructor inventory
+  template:
+    src: instructor_inventory.j2
+    dest: ./instructor_inventory.txt
+  tags:
+    - inventory
+    - users
+    - user_accounts

@@ -1,0 +1,31 @@
+azure_name_prefix: TRAINING
+azure_security_group: insecure_all
+azure_region: centralus
+azure_resource_group: TrainingRG
+# Storage Account Name MUST be unique across all of Azure
+# Must be numbers and lower case letters only 
+azure_storage_account: training0327default
+azure_storage_account_type: Standard_LRS
+azure_virtualnetwork_name: Trainnet001
+azure_virtualnetwork_cidr: 10.10.0.0/16
+azure_virtualsubnet_name: Trainsubnet001
+azure_virtualsubnet_cidr: 10.10.0.0/24
+ssh_public_key: ""
+run_cleanup: false
+
+azure_lab_node_types:
+  - name: control
+    type: rhel7
+    #type: rhel7-tower
+
+  - name: node1
+    type: rhel7
+
+  - name: node2
+    type: rhel7
+
+  - name: node3
+    type: rhel7
+
+  - name: haproxy
+    type: rhel7

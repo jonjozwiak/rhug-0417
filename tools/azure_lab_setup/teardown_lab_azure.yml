@@ -1,0 +1,17 @@
+- name: Destroy lab instances in Azure
+  hosts: localhost
+  connection: local
+  become: no
+  gather_facts: yes
+
+  vars:
+    - run_cleanup: true
+
+  roles:
+    - manage_azure_instances
+
+  post_tasks:
+    - name: Remove inventory files
+      shell: rm -vf {{ playbook_dir }}/*.txt
+      register: removal
+      changed_when: removal.stdout_lines | length > 0

@@ -1,0 +1,50 @@
+- name: Get resource group facts and validate auth 
+  azure_rm_resourcegroup_facts:
+
+- name: Destroy Azure instances
+  azure_rm_virtualmachine:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}"
+    state: absent
+    remove_on_absent:
+      - network_interfaces
+      - virtual_storage
+      - public_ips
+  with_nested:
+    - "{{ users }}"
+    - "{{ azure_lab_node_types }}"
+  register: azure_teardown_jobs
+  async: 7200
+  poll: 0
+
+- name: Wait for instance removal to complete
+  async_status: jid="{{ item.ansible_job_id }}"
+  register: rminstances
+  until: rminstances.finished
+  retries: 300
+  with_items: "{{ azure_teardown_jobs.results }}"
+
+- name: Remove virtual network
+  azure_rm_virtualnetwork:
+    name: "{{ azure_virtualnetwork_name }}"
+    resource_group: "{{ azure_resource_group }}"
+    state: absent
+
+- name: Remove security group
+  azure_rm_securitygroup:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_security_group }}"
+    state: absent
+
+- name: Remove Storage Account
+  azure_rm_storageaccount:
+    name: "{{ azure_storage_account }}"
+    resource_group: "{{ azure_resource_group }}"
+    state: absent
+
+- name: Remove resource group
+  azure_rm_resourcegroup:
+    name: "{{ azure_resource_group }}"
+    location: "{{ azure_region }}"
+    state: absent
+

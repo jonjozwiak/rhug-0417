@@ -1,0 +1,65 @@
+# --- Lookup tables --- #
+
+# Instance types used for lab configurations
+azure_instance_types:
+  centos7:
+    offer: CentOS
+    publisher: OpenLogic
+    sku: '7.3'
+    version: latest
+    size: Standard_A1
+    os_type: linux
+    disk_space: 10
+
+  #centos7-tower:
+  #  ami_id: "{{ azure_regions[azure_region].amis['centos7-tower'] }}"
+  #  size: t2.medium
+  #  os_type: linux
+  #  disk_space: 20
+
+  rhel7:
+    offer: RHEL
+    publisher: redhat
+    sku: '7.3'
+    version: latest
+    size: Standard_A1
+    os_type: linux
+    disk_space: 10
+
+  #rhel7-tower:
+  #  ami_id: "{{ azure_regions[azure_region].amis['rhel7-tower'] }}"
+  #  size: t2.medium
+  #  os_type: linux
+  #  disk_space: 20
+
+  # Look at https://cloud-images.ubuntu.com/locator/azure/ for Ubuntu AMIs
+  ubuntu14:
+    offer: UbuntuServer
+    publisher: canonical
+    sku: '14.04.5-LTS'
+    version: latest
+    size: Standard_A1
+    os_type: linux
+    disk_space: 10
+
+  ubuntu16:
+    offer: UbuntuServer
+    publisher: canonical
+    sku: '16.04-LTS'
+    version: latest
+    size: Standard_A1
+    os_type: linux
+    disk_space: 10
+
+# Login names used for SSH connections. These are baked in to the AMIs.
+azure_login_names:
+  rhel7-tower: azure-user
+  rhel7: azure-user
+  centos7-tower: centos
+  centos7: centos
+  ubuntu14: ubuntu
+  ubuntu16: ubuntu
+
+
+# Backwards compatability
+types: "{{ azure_lab_node_types }}"

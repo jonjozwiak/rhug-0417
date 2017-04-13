@@ -1,0 +1,139 @@
+- name: Get resource group facts and validate auth 
+  azure_rm_resourcegroup_facts:
+
+- name: Create a resource group
+  azure_rm_resourcegroup:
+    name: "{{ azure_resource_group }}"
+    location: "{{ azure_region }}"
+    state: present
+  tags:
+    - provision
+
+- name: Create storage account
+  azure_rm_storageaccount:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_storage_account }}"
+    account_type: "{{ azure_storage_account_type }}"
+  tags:
+    - provision
+
+- name: Create virtual network
+  azure_rm_virtualnetwork:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_virtualnetwork_name }}"
+    address_prefixes: "{{ azure_virtualnetwork_cidr }}"
+  tags:
+    - provision
+
+- name: Add subnet
+  azure_rm_subnet:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_virtualsubnet_name }}"
+    address_prefix: "{{ azure_virtualsubnet_cidr }}"
+    virtual_network: "{{ azure_virtualnetwork_name }}"
+  tags:
+    - provision
+
+- name: Create security group
+  azure_rm_securitygroup:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_security_group }}"
+    rules: 
+      - name: ALL
+        description: Open all ports
+        priority: 101
+  tags:
+    - provision
+
+- name: Create public ip
+  azure_rm_publicipaddress:
+    resource_group: "{{ azure_resource_group }}"
+    allocation_method: Static
+    name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}-ip"
+  register: azure_publicips
+  async: 7200
+  poll: 0
+  with_nested:
+    - "{{ users }}"
+    - "{{ azure_lab_node_types }}"
+  tags:
+    - provision
+
+- name: Wait for public IP creation to complete
+  async_status: jid="{{ item.ansible_job_id }}"
+  register: publicips
+  until: publicips.finished
+  retries: 300
+  with_items: "{{ azure_publicips.results }}"
+
+- name: Create NIC
+  azure_rm_networkinterface:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}-nic"
+    virtual_network: "{{ azure_virtualnetwork_name }}"
+    subnet: "{{ azure_virtualsubnet_name }}"
+    public_ip_name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}-ip"
+    security_group: "{{ azure_security_group }}"
+  register: azure_nics
+  async: 7200
+  poll: 0
+  with_nested:
+    - "{{ users }}"
+    - "{{ azure_lab_node_types }}"
+  tags:
+    - provision
+
+- name: Wait for NIC creation to complete
+  async_status: jid="{{ item.ansible_job_id }}"
+  register: nics
+  until: nics.finished
+  retries: 300
+  with_items: "{{ azure_nics.results }}"
+
+- name: Create Azure instances
+  azure_rm_virtualmachine:
+    resource_group: "{{ azure_resource_group }}"
+    name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}"
+    vm_size: "{{ azure_instance_types[item.1.type].size }}"
+    storage_account: "{{ azure_storage_account }}"
+    network_interfaces: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}-nic"
+    tags: 
+      Name: "{{ azure_name_prefix }}-{{ item.0.username }}-{{ item.1.name }}"
+    image:
+      offer: "{{ azure_instance_types[item.1.type].offer }}"
+      publisher: "{{ azure_instance_types[item.1.type].publisher }}"
+      sku: "{{ azure_instance_types[item.1.type].sku }}"
+      version: "{{ azure_instance_types[item.1.type].version }}"
+    admin_username: "{{ azure_login_names[item.1.type] }}"
+    ssh_password_enabled: False
+    ssh_public_keys:
+      - path: /home/{{ azure_login_names[item.1.type] }}/.ssh/authorized_keys
+        key_data: "{{ ssh_public_key }}"
+  with_nested:
+    - "{{ users }}"
+    - "{{ azure_lab_node_types }}"
+  register: azure_jobs
+  async: 7200
+  poll: 0
+  tags:
+    - provision
+
+- name: Wait for instance creation to complete
+  async_status: jid="{{ item.ansible_job_id }}"
+  register: instances
+  until: instances.finished
+  retries: 300
+  with_items: "{{ azure_jobs.results }}"
+
+- name: Include tasks only needed when creating instances
+  include: create.yml
+  static: no
+  tags:
+    - provision
+
+#- name: Include tasks only needed when creating instances
+#  include: teardown.yml
+#  when: "{{ run_cleanup }}" 
+#  tags:
+#    - teardown
+

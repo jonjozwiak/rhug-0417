@@ -1,0 +1,19 @@
+- name: Provision Tasks
+  include: provision.yml
+  when: "{{ not run_cleanup }}"
+  tags: 
+    - provision
+  
+- name: Include tasks only needed when creating instances
+  include: create.yml
+  when: "{{ not run_cleanup }}"
+  static: no
+  tags:
+    - provision
+
+- name: Include tasks only needed when creating instances
+  include: teardown.yml
+  when: "{{ run_cleanup }}" 
+  tags:
+    - teardown
+
