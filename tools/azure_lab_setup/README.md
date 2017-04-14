@@ -18,8 +18,8 @@ The `provision_lab.yml` playbook creates instances, configures them for password
 
 To set up the lab for Ansible training, follow these steps.
 
-1. Create a Microsoft Azure account.
-
+1. Create a Microsoft Azure account.  (Note a default pay-as-you-go account has limits in terms of number of public IP addresses and VMs you can launch.  At the time of writing this was limited to 20 public IPs.  You will need to enter a support ticket to raise this).  
+ 
 2. Create a service principal (https://azure.microsoft.com/en-us/documentation/articles/resource-group-create-service-principal-portal/).  I did from CLI via the docker image:
 
    ```bash
